@@ -1,1 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Organizational Intelligence Audit | RELCO Digital Solutions</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --navy:#1B3A6B;--navy-deep:#0D1F3C;--gold:#C8961E;--gold-lt:#F0C84A;
+  --cream:#FAF7F2;--white:#FFFFFF;--gray:#F4F4F0;--dgray:#3A3A3A;
+  --border:#E0DDD8;--success:#1D9E75;--warn:#E67E22;--danger:#C0392B;
+  --font-head:'Playfair Display',Georgia,serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --shadow:0 4px 24px rgba(27,58,107,0.10);
+  --shadow-lg:0 12px 48px rgba(27,58,107,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--font-body);background:var(--cream);color:var(--dgray);min-height:100vh;}
 
+/* ── PRINT ─────────────────────────────────────────────── */
+@media print{
+  .no-print{display:none!important;}
+  .section-panel{display:block!important;opacity:1!important;page-break-before:always;}
+  body{background:#fff;}
+  .shell{grid-template-columns:1fr;grid-template-rows:auto;}
+  .sidebar{display:none;}
+  .main-area{padding:0;}
+}
+
+/* ── LAYOUT ────────────────────────────────────────────── */
+.shell{display:grid;grid-template-columns:280px 1fr;grid-template-rows:64px 1fr;min-height:100vh;}
+.topbar{grid-column:1/-1;background:var(--navy-deep);display:flex;align-items:center;
+  justify-content:space-between;padding:0 2rem;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 16px rgba(0,0,0,0.3);}
+.topbar-brand{display:flex;align-items:center;gap:.75rem;}
+.topbar-logo{width:36px;height:36px;background:var(--gold);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-head);font-weight:900;color:var(--navy-deep);font-size:18px;}
+.topbar-name{font-family:var(--font-head);color:var(--white);font-size:1.1rem;font-weight:700;letter-spacing:.01em;}
+.topbar-name span{color:var(--gold);}
+.topbar-right{display:flex;align-items:center;gap:1rem;}
+.badge-conf{background:rgba(200,150,30,.18);border:1px solid var(--gold);
+  color:var(--gold-lt);font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.06em;}
+.btn-print{background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);
+  font-family:var(--font-body);font-size:.75rem;padding:6px 14px;border-radius:6px;cursor:pointer;transition:.2s;}
+.btn-print:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.6);}
+
+/* ── SIDEBAR ───────────────────────────────────────────── */
+.sidebar{background:var(--navy);position:sticky;top:64px;height:calc(100vh - 64px);
+  overflow-y:auto;padding:1.5rem 0;}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.sidebar-section{margin-bottom:.5rem;}
+.sidebar-label{font-size:.65rem;font-weight:600;letter-spacing:.12em;color:rgba(255,255,255,.35);
+  text-transform:uppercase;padding:.5rem 1.5rem .25rem;}
+.nav-item{display:flex;align-items:center;gap:.625rem;padding:.55rem 1.5rem;
+  cursor:pointer;transition:.15s;border-left:3px solid transparent;text-decoration:none;}
+.nav-item:hover{background:rgba(255,255,255,.06);border-left-color:rgba(200,150,30,.4);}
+.nav-item.active{background:rgba(200,150,30,.12);border-left-color:var(--gold);}
+.nav-num{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);
+  font-size:.65rem;font-weight:600;color:rgba(255,255,255,.5);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.nav-item.active .nav-num{background:var(--gold);color:var(--navy-deep);}
+.nav-text{font-size:.8rem;color:rgba(255,255,255,.65);line-height:1.3;}
+.nav-item.active .nav-text{color:var(--white);font-weight:500;}
+.score-sidebar{margin:1rem 1.25rem;background:rgba(255,255,255,.06);border-radius:10px;padding:1rem;}
+.score-sidebar-label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);margin-bottom:.5rem;}
+.score-big{font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:var(--gold-lt);line-height:1;}
+.score-max{font-size:.75rem;color:rgba(255,255,255,.4);}
+.score-bar-wrap{margin-top:.625rem;background:rgba(255,255,255,.1);border-radius:4px;height:6px;overflow:hidden;}
+.score-bar{height:6px;border-radius:4px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));
+  transition:width .6s ease;}
+.score-band{font-size:.7rem;font-weight:600;margin-top:.375rem;}
+
+/* ── MAIN ──────────────────────────────────────────────── */
+.main-area{padding:2rem 2.5rem;overflow-y:auto;}
+.section-panel{display:none;animation:fadeUp .35s ease both;}
+.section-panel.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+.page-title{font-family:var(--font-head);font-size:1.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem;}
+.page-sub{font-size:.875rem;color:#888;margin-bottom:1.75rem;line-height:1.6;}
+.section-divider{height:3px;background:linear-gradient(90deg,var(--gold),transparent);
+  margin-bottom:1.75rem;border-radius:2px;}
+
+/* ── CARDS ─────────────────────────────────────────────── */
+.card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);
+  padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border);}
+.card-title{font-family:var(--font-head);font-size:1.1rem;font-weight:700;color:var(--navy);
+  margin-bottom:.25rem;}
+.card-sub{font-size:.8rem;color:#999;margin-bottom:1.25rem;}
+.note-box{background:#EEF4FF;border-left:3px solid var(--navy);border-radius:0 8px 8px 0;
+  padding:.875rem 1rem;margin-bottom:1.25rem;font-size:.82rem;color:var(--navy);line-height:1.6;}
+.note-box strong{display:block;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:.25rem;opacity:.7;}
+
+/* ── TABLES ────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-bottom:1.25rem;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+thead tr{background:var(--navy);}
+thead th{color:var(--white);font-weight:600;padding:.625rem .75rem;text-align:left;
+  font-size:.75rem;letter-spacing:.03em;white-space:nowrap;}
+tbody tr:nth-child(even){background:var(--gray);}
+tbody tr:hover{background:#EEF4FF;}
+tbody td{padding:.5rem .75rem;border-bottom:1px solid var(--border);vertical-align:top;}
+tbody td input[type=text],tbody td input[type=number],tbody td select,tbody td textarea{
+  width:100%;border:1px solid #DDD;border-radius:5px;padding:4px 7px;
+  font-family:var(--font-body);font-size:.8rem;background:#FAFAFA;
+  transition:.15s;outline:none;color:var(--dgray);}
+tbody td input:focus,tbody td select:focus,tbody td textarea:focus{
+  border-color:var(--navy);background:var(--white);box-shadow:0 0 0 3px rgba(27,58,107,.08);}
+tbody td textarea{resize:vertical;min-height:38px;}
+select option{font-size:.8rem;}
+
+/* ── SCORE CELLS ───────────────────────────────────────── */
+.score-cell{display:flex;gap:4px;justify-content:center;}
+.score-radio{display:none;}
+.score-label{width:26px;height:26px;border-radius:50%;border:1.5px solid #DDD;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:.72rem;font-weight:600;color:#AAA;transition:.15s;}
+.score-radio:checked+.score-label{background:var(--navy);border-color:var(--navy);color:var(--white);}
+.score-label:hover{border-color:var(--navy);color:var(--navy);}
+.score-total-cell{font-family:var(--font-mono);font-weight:600;color:var(--navy);
+  font-size:.9rem;text-align:center;}
+
+/* ── COVER FORM ────────────────────────────────────────── */
+.cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;}
+.form-group{display:flex;flex-direction:column;gap:.3rem;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#888;}
+input[type=text].field,input[type=date].field,input[type=email].field,select.field,textarea.field{
+  border:1px solid var(--border);border-radius:8px;padding:.6rem .875rem;
+  font-family:var(--font-body);font-size:.9rem;color:var(--dgray);background:var(--white);
+  transition:.2s;outline:none;width:100%;}
+input.field:focus,select.field:focus,textarea.field:focus{
+  border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,107,.08);}
+textarea.field{min-height:80px;resize:vertical;}
+
+/* ── SCORE DASHBOARD ───────────────────────────────────── */
+.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;}
+.score-card{background:var(--white);border-radius:10px;border:1px solid var(--border);
+  padding:1rem 1.25rem;box-shadow:var(--shadow);}
+.sc-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:.375rem;}
+.sc-val{font-family:var(--font-head);font-size:1.8rem;font-weight:900;color:var(--navy);}
+.sc-max{font-size:.75rem;color:#BBB;}
+.sc-bar{height:5px;border-radius:3px;background:#EEE;margin-top:.5rem;overflow:hidden;}
+.sc-fill{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));transition:width .5s ease;}
+.band-chip{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.05em;margin-top:.375rem;}
+
+/* ── ROI TABLE ─────────────────────────────────────────── */
+.roi-row td:last-child{font-family:var(--font-mono);font-weight:600;color:var(--navy);}
+.roi-total td{background:var(--navy)!important;color:var(--white)!important;font-weight:700;}
+.roi-total td:last-child{color:var(--gold-lt)!important;}
+
+/* ── SIGN-OFF ───────────────────────────────────────────── */
+.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+.sign-box{background:var(--gray);border-radius:10px;padding:1.25rem;border:1px solid var(--border);}
+.sign-box h4{font-family:var(--font-head);font-size:1rem;color:var(--navy);margin-bottom:.875rem;
+  padding-bottom:.5rem;border-bottom:2px solid var(--gold);}
+.sign-line{height:52px;border-bottom:1px solid #CCC;margin:1rem 0 .25rem;}
+.sign-label{font-size:.7rem;color:#AAA;}
+
+/* ── BUTTONS ───────────────────────────────────────────── */
+.btn-primary{background:var(--navy);color:var(--white);border:none;border-radius:8px;
+  padding:.65rem 1.5rem;font-family:var(--font-body);font-size:.875rem;font-weight:600;
+  cursor:pointer;transition:.2s;}
+.btn-primary:hover{background:var(--navy-deep);transform:translateY(-1px);box-shadow:var(--shadow);}
+.btn-gold{background:var(--gold);color:var(--navy-deep);border:none;border-radius:8px;
+  padding:.65rem 1.5rem;font-family:var(--font-body);font-size:.875rem;font-weight:700;
+  cursor:pointer;transition:.2s;}
+.btn-gold:hover{background:var(--gold-lt);transform:translateY(-1px);}
+.btn-row{display:flex;gap:.75rem;margin-top:1.25rem;flex-wrap:wrap;}
+
+/* ── PRIORITY MATRIX ───────────────────────────────────── */
+.priority-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700;}
+.p-h1{background:#D5F0E8;color:#085041;}
+.p-h2{background:#FEF3DC;color:#633806;}
+.p-h3{background:#EAE8FB;color:#3C3489;}
+.roi-high{background:#D5F0E8;color:#085041;}
+.roi-med{background:#FEF3DC;color:#633806;}
+.roi-low{background:#FFE8E8;color:#8B0000;}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr;grid-template-rows:64px auto 1fr;}
+  .sidebar{position:relative;height:auto;display:flex;flex-wrap:wrap;padding:.75rem;}
+  .nav-item{padding:.4rem .75rem;}
+  .main-area{padding:1.25rem;}
+  .cover-grid,.sign-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- ══ TOPBAR ══════════════════════════════════════════════ -->
+<header class="topbar no-print">
+  <div class="topbar-brand">
+    <div class="topbar-logo">R</div>
+    <div class="topbar-name">RELCO <span>Digital</span></div>
+  </div>
+  <div style="font-family:var(--font-head);color:rgba(255,255,255,.5);font-size:.85rem;letter-spacing:.04em;">
+    Organizational Intelligence Audit
+  </div>
+  <div class="topbar-right">
+    <span class="badge-conf">STRICTLY CONFIDENTIAL</span>
+    <button class="btn-print" onclick="window.print()">⎙ Print / Export PDF</button>
+  </div>
+</header>
+
+<!-- ══ SIDEBAR ═════════════════════════════════════════════ -->
+<nav class="sidebar no-print">
+  <div class="score-sidebar">
+    <div class="score-sidebar-label">Overall AI Readiness</div>
+    <div class="score-big" id="total-score-display">0</div>
+    <div class="score-max">/ 100 points</div>
+    <div class="score-bar-wrap"><div class="score-bar" id="total-bar" style="width:0%"></div></div>
+    <div class="score-band" id="score-band-label" style="color:rgba(255,255,255,.4);">Not yet scored</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Audit Sections</div>
+    <div class="nav-item active" onclick="go(0)">
+      <div class="nav-num">0</div>
+      <div class="nav-text">Cover Page & Client Info</div>
+    </div>
+    <div class="nav-item" onclick="go(1)">
+      <div class="nav-num">1</div>
+      <div class="nav-text">Executive Summary</div>
+    </div>
+    <div class="nav-item" onclick="go(2)">
+      <div class="nav-num">2</div>
+      <div class="nav-text">Process Inventory & Cost Mapping</div>
+    </div>
+    <div class="nav-item" onclick="go(3)">
+      <div class="nav-num">3</div>
+      <div class="nav-text">Data Quality & Readiness</div>
+    </div>
+    <div class="nav-item" onclick="go(4)">
+      <div class="nav-num">4</div>
+      <div class="nav-text">Technology Stack Readiness</div>
+    </div>
+    <div class="nav-item" onclick="go(5)">
+      <div class="nav-num">5</div>
+      <div class="nav-text">Human Dependency Analysis</div>
+    </div>
+    <div class="nav-item" onclick="go(6)">
+      <div class="nav-num">6</div>
+      <div class="nav-text">Leadership Readiness</div>
+    </div>
+    <div class="nav-item" onclick="go(7)">
+      <div class="nav-num">7</div>
+      <div class="nav-text">Master Scorecard</div>
+    </div>
+    <div class="nav-item" onclick="go(8)">
+      <div class="nav-num">8</div>
+      <div class="nav-text">12-Month ROI Projection</div>
+    </div>
+    <div class="nav-item" onclick="go(9)">
+      <div class="nav-num">9</div>
+      <div class="nav-text">Implementation Roadmap</div>
+    </div>
+    <div class="nav-item" onclick="go(10)">
+      <div class="nav-num">10</div>
+      <div class="nav-text">Audit Sign-Off</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ MAIN AREA ════════════════════════════════════════════ -->
+<main class="main-area">
+
+<!-- ─── SECTION 0: COVER ───────────────────────────────── -->
+<div class="section-panel active" id="panel-0">
+  <div class="page-title">Organizational Intelligence Audit</div>
+  <div class="page-sub">RELCO Digital Solutions · Principal AI Strategist: Misbah Ul Alam, CMA<br>Complete the client information below before beginning the audit.</div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-title">Client Information</div>
+    <div class="card-sub">All fields are saved in your browser session</div>
+    <div class="cover-grid">
+      <div class="form-group"><label>Client Organisation</label><input class="field" id="c-org" type="text" placeholder="e.g. Packages Limited"/></div>
+      <div class="form-group"><label>Industry / Sector</label>
+        <select class="field" id="c-industry">
+          <option value="">— Select —</option>
+          <option>Textile & Apparel</option><option>Manufacturing</option><option>FMCG</option>
+          <option>Healthcare & Pharma</option><option>Banking & Finance</option>
+          <option>Real Estate & Construction</option><option>Retail & E-Commerce</option>
+          <option>Logistics & Supply Chain</option><option>Education</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Primary Contact Name</label><input class="field" id="c-contact" type="text" placeholder="Full name"/></div>
+      <div class="form-group"><label>Designation</label><input class="field" id="c-designation" type="text" placeholder="e.g. Chief Financial Officer"/></div>
+      <div class="form-group"><label>Business Email</label><input class="field" id="c-email" type="email" placeholder="contact@organisation.com"/></div>
+      <div class="form-group"><label>Audit Date</label><input class="field" id="c-date" type="date"/></div>
+      <div class="form-group"><label>Report Reference</label><input class="field" id="c-ref" type="text" placeholder="RELCO-OIA-001"/></div>
+      <div class="form-group"><label>Annual Revenue (PKR)</label>
+        <select class="field" id="c-revenue">
+          <option value="">— Select band —</option>
+          <option>Below 50M</option><option>50M – 200M</option><option>200M – 500M</option>
+          <option>500M – 1B</option><option>Above 1B</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Number of Employees</label>
+        <select class="field" id="c-size">
+          <option value="">— Select —</option>
+          <option>1–25</option><option>26–100</option><option>101–300</option><option>301–1000</option><option>1000+</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Primary Business Goal</label>
+        <select class="field" id="c-goal">
+          <option value="">— Select —</option>
+          <option>Reduce operational costs</option><option>Eliminate manual errors</option>
+          <option>Scale without adding headcount</option><option>Improve reporting speed</option>
+          <option>Competitive differentiation</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="go(1)">Begin Audit →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SECTION 1: EXECUTIVE SUMMARY ──────────────────── -->
+<div class="section-panel" id="panel-1">
+  <div class="page-title">Section 1 — Executive Summary</div>
+  <div class="page-sub">High-level overview and headline findings. Complete after all other sections are scored.</div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-title">Purpose of this Audit</div>
+    <p style="font-size:.875rem;line-height:1.7;color:#555;">This Organizational Intelligence Audit (OIA) is a structured diagnostic conducted by RELCO Digital Solutions to assess an organisation's current operational state, its readiness to adopt AI automation, and the financial opportunity available through targeted workflow transformation. The audit is conducted by a qualified Cost &amp; Management Accountant (CMA) with specialisation in AI systems consulting — ensuring every recommendation is grounded in both technical feasibility and financial rigour.</p>
+  </div>
+
+  <div class="score-grid" id="summary-score-grid">
+    <div class="score-card"><div class="sc-label">Data Quality</div><div class="sc-val" id="sum-d3">0</div><div class="sc-max">/ 40</div><div class="sc-bar"><div class="sc-fill" id="sum-b3" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Tech Readiness</div><div class="sc-val" id="sum-d4">0</div><div class="sc-max">/ 30</div><div class="sc-bar"><div class="sc-fill" id="sum-b4" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Leadership</div><div class="sc-val" id="sum-d6">0</div><div class="sc-max">/ 30</div><div class="sc-bar"><div class="sc-fill" id="sum-b6" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Overall Score</div><div class="sc-val" id="sum-total">0</div><div class="sc-max">/ 100</div><div class="sc-bar"><div class="sc-fill" id="sum-btotal" style="width:0%"></div></div><div class="band-chip" id="sum-band" style="background:#EEE;color:#888;">Not scored</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Headline Findings</div>
+    <div class="card-sub">Consultant to complete after full audit</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div><label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;display:block;margin-bottom:.4rem;">Key Strengths</label>
+        <textarea class="field" id="es-strengths" rows="5" placeholder="What does this organisation do well?"></textarea></div>
+      <div><label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;display:block;margin-bottom:.4rem;">Key Risks / Gaps</label>
+        <textarea class="field" id="es-risks" rows="5" placeholder="What are the biggest blockers to AI adoption?"></textarea></div>
+    </div>
+    <div style="margin-top:1rem;">
+      <label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;display:block;margin-bottom:.4rem;">Consultant Narrative Summary</label>
+      <textarea class="field" id="es-summary" rows="5" placeholder="Write a 3–5 sentence executive summary of findings for the client leadership team…"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SECTION 2: PROCESS INVENTORY ──────────────────── -->
+<div class="section-panel" id="panel-2">
+  <div class="page-title">Section 2 — Process Inventory & Cost Mapping</div>
+  <div class="page-sub">Map every significant recurring process to its financial cost. This is the foundation of the entire ROI case.</div>
+  <div class="section-divider"></div>
+
+  <div class="note-box"><strong>Consultant Instruction</strong>Interview department heads and process owners. A significant process = any activity consuming more than 4 hours of staff time per month OR a dependency for another critical function. Cost = Time (hrs) × Hourly rate including burden (benefits + overhead).</div>
+
+  <div class="card">
+    <div class="card-title">2.1 — Department Process Register</div>
+    <div class="tbl-wrap">
+      <table id="process-table">
+        <thead><tr>
+          <th>Process Name</th><th>Department</th><th>Owner</th><th>Frequency</th>
+          <th>Time/Run (hrs)</th><th>Monthly Cost (PKR)</th><th>Error Rate %</th><th>Automation Potential</th>
+        </tr></thead>
+        <tbody id="process-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn-primary" onclick="addProcessRow()">+ Add Process Row</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2.2 — Automation Potential Guide</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Rating</th><th>Criteria</th><th>Recommended AI Tool</th></tr></thead>
+      <tbody>
+        <tr><td><span class="priority-badge roi-high">High</span></td><td>Repetitive, rule-based, structured data input/output, minimal judgment required</td><td>Make.com / n8n workflow automation</td></tr>
+        <tr><td><span class="priority-badge roi-med">Medium</span></td><td>Semi-structured, some exceptions, requires basic interpretation</td><td>Relevance AI agent with human-in-loop</td></tr>
+        <tr><td><span class="priority-badge roi-low">Low</span></td><td>Highly variable, judgment-intensive, relationship-dependent, regulatory nuance</td><td>AI-assisted decision support, not full replacement</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2.3 — Total Cost of Manual Operations Summary</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Department</th><th>Monthly Cost (PKR)</th><th>Annual Cost (PKR)</th><th>% Automatable (est.)</th></tr></thead>
+      <tbody>
+        <tr><td>Finance &amp; Accounts</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr><td>Human Resources</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr><td>Procurement / Supply Chain</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr><td>Sales &amp; Business Development</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr><td>Operations / Production</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr><td>IT &amp; Administration</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="%"/></td></tr>
+        <tr style="background:var(--navy);color:var(--white);font-weight:700;"><td>TOTAL</td><td><input type="text" placeholder="0" style="background:rgba(255,255,255,.1);color:var(--gold-lt);font-weight:700;"/></td><td><input type="text" placeholder="0" style="background:rgba(255,255,255,.1);color:var(--gold-lt);font-weight:700;"/></td><td><input type="text" placeholder="%" style="background:rgba(255,255,255,.1);color:var(--gold-lt);font-weight:700;"/></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ─── SECTION 3: DATA QUALITY ────────────────────────── -->
+<div class="section-panel" id="panel-3">
+  <div class="page-title">Section 3 — Data Quality & Readiness Assessment</div>
+  <div class="page-sub">AI agents are only as effective as the data they operate on. Score each criterion 1–5.</div>
+  <div class="section-divider"></div>
+
+  <div class="note-box"><strong>Scoring Guide</strong>1 = Not in place &nbsp;·&nbsp; 2 = Partially in place &nbsp;·&nbsp; 3 = Inconsistently applied &nbsp;·&nbsp; 4 = Mostly in place &nbsp;·&nbsp; 5 = Fully in place and verified. Do not accept verbal assurance — request a system demonstration where possible.</div>
+
+  <div class="card">
+    <div class="card-title">3.1 — Data Quality Scorecard</div>
+    <div class="card-sub">Score: <strong id="d3-score">0</strong> / 40</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th style="width:55%">Assessment Criterion</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Score</th></tr></thead>
+      <tbody id="d3-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">3.2 — Data Gap Register</div>
+    <div class="card-sub">Document specific data gaps that must be resolved before AI deployment</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Data Gap Identified</th><th>Department Affected</th><th>Impact on AI Readiness</th><th>Remediation Required</th></tr></thead>
+      <tbody>
+        <tr><td><input type="text" placeholder="Describe the gap"/></td><td><input type="text" placeholder="Department"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="text" placeholder="What needs to be fixed"/></td></tr>
+        <tr><td><input type="text" placeholder="Describe the gap"/></td><td><input type="text" placeholder="Department"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="text" placeholder="What needs to be fixed"/></td></tr>
+        <tr><td><input type="text" placeholder="Describe the gap"/></td><td><input type="text" placeholder="Department"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="text" placeholder="What needs to be fixed"/></td></tr>
+        <tr><td><input type="text" placeholder="Describe the gap"/></td><td><input type="text" placeholder="Department"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="text" placeholder="What needs to be fixed"/></td></tr>
+      </tbody>
+    </table></div>
+    <button class="btn-primary" style="font-size:.75rem;padding:.4rem .9rem;" onclick="addGapRow()">+ Add Row</button>
+  </div>
+</div>
+
+<!-- ─── SECTION 4: TECH STACK ──────────────────────────── -->
+<div class="section-panel" id="panel-4">
+  <div class="page-title">Section 4 — Technology Stack & Integration Readiness</div>
+  <div class="page-sub">Inventory all software systems and score their integration capability for AI deployment.</div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-title">4.1 — Current Systems Inventory</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>System / Software</th><th>Vendor / Name</th><th>API Available?</th><th>Age (yrs)</th><th>Integration Notes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ERP / Accounting</strong></td><td><input type="text" placeholder="e.g. SAP, QuickBooks"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>CRM / Sales</strong></td><td><input type="text" placeholder="e.g. Salesforce, HubSpot"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>HR &amp; Payroll</strong></td><td><input type="text" placeholder="e.g. Oracle HCM, local"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>Email / Communication</strong></td><td><input type="text" placeholder="e.g. Google Workspace"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>Document Management</strong></td><td><input type="text" placeholder="e.g. SharePoint, Drive"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>Reporting / BI</strong></td><td><input type="text" placeholder="e.g. Power BI, Excel"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+        <tr><td><strong>Other</strong></td><td><input type="text"/></td><td><select><option>Yes</option><option>No</option><option>Unknown</option></select></td><td><input type="number" placeholder="0" style="width:55px"/></td><td><input type="text" placeholder="Notes"/></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">4.2 — Integration Readiness Scorecard</div>
+    <div class="card-sub">Score: <strong id="d4-score">0</strong> / 30</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th style="width:55%">Assessment Criterion</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Score</th></tr></thead>
+      <tbody id="d4-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ─── SECTION 5: HUMAN DEPENDENCY ───────────────────── -->
+<div class="section-panel" id="panel-5">
+  <div class="page-title">Section 5 — Human Dependency & Single-Point-of-Failure Analysis</div>
+  <div class="page-sub">Identify processes critically dependent on specific individuals — the highest-priority automation targets.</div>
+  <div class="section-divider"></div>
+
+  <div class="note-box"><strong>Key Diagnostic Questions</strong>"If [person] left tomorrow, what would stop working?" and "Who is the only person who knows how to do X?" Document candidly — these are your highest-value findings.</div>
+
+  <div class="card">
+    <div class="card-title">5.1 — Critical Dependency Register</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Process / Knowledge Area</th><th>Dependent Individual</th><th>Impact if Unavailable</th><th>Documented?</th><th>AI Mitigation Available</th></tr></thead>
+      <tbody id="dep-tbody"></tbody>
+    </table></div>
+    <button class="btn-primary" onclick="addDepRow()">+ Add Dependency</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">5.2 — Knowledge Capture Priority Matrix</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Process</th><th>Captureability (1–5)</th><th>Capture Effort (days)</th><th>Automation ROI Potential</th><th>Priority Rank</th></tr></thead>
+      <tbody>
+        <tr><td><input type="text" placeholder="Process name"/></td><td><input type="number" min="1" max="5" placeholder="1–5" style="width:60px"/></td><td><input type="number" placeholder="days" style="width:60px"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="number" placeholder="#" style="width:50px"/></td></tr>
+        <tr><td><input type="text"/></td><td><input type="number" min="1" max="5" style="width:60px"/></td><td><input type="number" style="width:60px"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="number" style="width:50px"/></td></tr>
+        <tr><td><input type="text"/></td><td><input type="number" min="1" max="5" style="width:60px"/></td><td><input type="number" style="width:60px"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="number" style="width:50px"/></td></tr>
+        <tr><td><input type="text"/></td><td><input type="number" min="1" max="5" style="width:60px"/></td><td><input type="number" style="width:60px"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="number" style="width:50px"/></td></tr>
+        <tr><td><input type="text"/></td><td><input type="number" min="1" max="5" style="width:60px"/></td><td><input type="number" style="width:60px"/></td><td><select><option>High</option><option>Medium</option><option>Low</option></select></td><td><input type="number" style="width:50px"/></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ─── SECTION 6: LEADERSHIP ──────────────────────────── -->
+<div class="section-panel" id="panel-6">
+  <div class="page-title">Section 6 — Leadership Readiness & Change Capacity</div>
+  <div class="page-sub">Administer directly with CEO, MD, or CFO — not a delegated representative.</div>
+  <div class="section-divider"></div>
+
+  <div class="note-box"><strong>Critical Note</strong>If the most senior person available scores below 18/30, document this as a risk and include a Change Management phase in the engagement proposal before any AI implementation.</div>
+
+  <div class="card">
+    <div class="card-title">6.1 — Leadership & Change Readiness Scorecard</div>
+    <div class="card-sub">Score: <strong id="d6-score">0</strong> / 30</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th style="width:55%">Assessment Criterion</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Score</th></tr></thead>
+      <tbody id="d6-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">6.2 — Qualitative Leadership Notes</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div><label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;display:block;margin-bottom:.4rem;">Observed Strengths</label>
+        <textarea class="field" rows="5" placeholder="What leadership qualities support this AI transformation?"></textarea></div>
+      <div><label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;display:block;margin-bottom:.4rem;">Observed Risks / Concerns</label>
+        <textarea class="field" rows="5" placeholder="What leadership gaps could derail implementation?"></textarea></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SECTION 7: MASTER SCORECARD ───────────────────── -->
+<div class="section-panel" id="panel-7">
+  <div class="page-title">Section 7 — Master AI Readiness Scorecard</div>
+  <div class="page-sub">Composite score across all audit domains. This is the headline figure presented to the client.</div>
+  <div class="section-divider"></div>
+
+  <div class="score-grid">
+    <div class="score-card"><div class="sc-label">Data Quality</div><div class="sc-val" id="m-d3">0</div><div class="sc-max">/ 40</div><div class="sc-bar"><div class="sc-fill" id="m-b3" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Tech Readiness</div><div class="sc-val" id="m-d4">0</div><div class="sc-max">/ 30</div><div class="sc-bar"><div class="sc-fill" id="m-b4" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Leadership</div><div class="sc-val" id="m-d6">0</div><div class="sc-max">/ 30</div><div class="sc-bar"><div class="sc-fill" id="m-b6" style="width:0%"></div></div></div>
+    <div class="score-card"><div class="sc-label">Overall</div><div class="sc-val" id="m-total">0</div><div class="sc-max">/ 100</div><div class="sc-bar"><div class="sc-fill" id="m-btotal" style="width:0%"></div></div><div class="band-chip" id="m-band" style="background:#EEE;color:#888;">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Score Interpretation & Recommended Engagement</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Score</th><th>Band</th><th>Interpretation</th><th>RELCO Recommended Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>0–20</strong></td><td><span class="band-chip" style="background:#FFE8E8;color:#8B0000;">Not Ready</span></td><td>Critical gaps in data, systems or leadership. AI will fail without foundational fixes.</td><td>Readiness Remediation Programme — 3–6 months pre-implementation</td></tr>
+        <tr><td><strong>21–40</strong></td><td><span class="band-chip" style="background:#FEF3DC;color:#633806;">Early Stage</span></td><td>Some foundations exist. High human dependency. Limited digital systems.</td><td>Discovery Sprint + Data &amp; Systems Baseline (Tier 1 expanded)</td></tr>
+        <tr><td><strong>41–60</strong></td><td><span class="band-chip" style="background:#FFFBD0;color:#7A6000;">Developing</span></td><td>Mixed readiness. Strong pockets alongside significant gaps. Leadership engaged.</td><td>Discovery Sprint → phased Implementation, highest-ROI process first</td></tr>
+        <tr><td><strong>61–80</strong></td><td><span class="band-chip" style="background:#D5F0E8;color:#085041;">Ready</span></td><td>Solid foundations. Systems connected. Data structured. Leadership committed.</td><td>Full 8-week Implementation engagement</td></tr>
+        <tr><td><strong>81–100</strong></td><td><span class="band-chip" style="background:#E6F1FB;color:#0C447C;">Advanced</span></td><td>Exceptional readiness. AI can be deployed across multiple processes simultaneously.</td><td>Enterprise AI Workforce — multi-agent, multi-department rollout</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ─── SECTION 8: ROI PROJECTION ──────────────────────── -->
+<div class="section-panel" id="panel-8">
+  <div class="page-title">Section 8 — 12-Month AI ROI Projection</div>
+  <div class="page-sub">Management accounting-standard financial business case. All projections based on audit data — labelled as estimates.</div>
+  <div class="section-divider"></div>
+
+  <div class="note-box"><strong>CMA Instruction</strong>Complete this section after all scoring sections are done. These figures form the client's internal business case for board approval. Always use conservative estimates. The "AI Performance Statement" comparing projections vs actuals is delivered at the 90-day post-implementation review.</div>
+
+  <div class="card">
+    <div class="card-title">8.1 — Annual Cost of Manual Operations (Baseline)</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Process / Function</th><th>Annual Cost (PKR)</th><th>% Automatable</th><th>Recoverable Cost (PKR)</th></tr></thead>
+      <tbody id="roi-tbody"></tbody>
+    </table></div>
+    <button class="btn-primary" onclick="addRoiRow()">+ Add Process</button>
+    <div style="margin-top:1rem;padding:1rem;background:var(--navy);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:var(--white);font-weight:600;">Total Annual Recoverable Cost</span>
+      <span style="color:var(--gold-lt);font-family:var(--font-mono);font-size:1.2rem;font-weight:700;" id="roi-total-display">PKR 0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">8.2 — Implementation Cost Estimate</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Cost Item</th><th>One-Time (PKR)</th><th>Monthly Recurring (PKR)</th></tr></thead>
+      <tbody>
+        <tr><td>RELCO Discovery Sprint fee</td><td><input type="text" placeholder="e.g. 250,000"/></td><td><input type="text" placeholder="—"/></td></tr>
+        <tr><td>RELCO Implementation fee</td><td><input type="text" placeholder="e.g. 1,200,000"/></td><td><input type="text" placeholder="—"/></td></tr>
+        <tr><td>Automation platform licences (Make.com / n8n)</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="e.g. 12,000"/></td></tr>
+        <tr><td>AI agent platform (Relevance AI)</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="e.g. 25,000"/></td></tr>
+        <tr><td>Internal staff time (estimated)</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="—"/></td></tr>
+        <tr><td>Training &amp; change management</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="—"/></td></tr>
+        <tr><td>Contingency (15%)</td><td><input type="text" placeholder="0"/></td><td><input type="text" placeholder="0"/></td></tr>
+        <tr class="roi-total"><td>TOTAL IMPLEMENTATION COST</td><td><input type="text" placeholder="PKR" style="background:rgba(255,255,255,.1);color:var(--gold-lt);font-weight:700;"/></td><td><input type="text" placeholder="PKR / mo" style="background:rgba(255,255,255,.1);color:var(--gold-lt);font-weight:700;"/></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">8.3 — Net ROI Summary (3-Year)</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Metric</th><th>Year 1 (PKR)</th><th>Year 2 (PKR)</th><th>Year 3 (PKR)</th></tr></thead>
+      <tbody>
+        <tr><td>Annual cost recovered through automation</td><td><input type="text"/></td><td><input type="text"/></td><td><input type="text"/></td></tr>
+        <tr><td>Total implementation cost (amortised)</td><td><input type="text"/></td><td><input type="text"/></td><td><input type="text"/></td></tr>
+        <tr><td>Net financial benefit</td><td><input type="text"/></td><td><input type="text"/></td><td><input type="text"/></td></tr>
+        <tr><td>Cumulative net benefit</td><td><input type="text"/></td><td><input type="text"/></td><td><input type="text"/></td></tr>
+        <tr><td><strong>Return on Investment (%)</strong></td><td><input type="text"/></td><td><input type="text"/></td><td><input type="text"/></td></tr>
+        <tr><td><strong>Payback period (months)</strong></td><td colspan="3"><input type="text" style="width:100%"/></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ─── SECTION 9: ROADMAP ─────────────────────────────── -->
+<div class="section-panel" id="panel-9">
+  <div class="page-title">Section 9 — Prioritised AI Implementation Roadmap</div>
+  <div class="page-sub">Sequence initiatives by financial return, feasibility and strategic impact across three horizons.</div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-title">9.1 — Initiative Priority Matrix</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Initiative Name</th><th>Horizon</th><th>ROI Potential</th><th>Effort</th><th>Risk</th><th>Recommended Tool</th></tr></thead>
+      <tbody id="roadmap-tbody"></tbody>
+    </table></div>
+    <button class="btn-primary" onclick="addRoadmapRow()">+ Add Initiative</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">9.2 — Engagement Recommendation</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>RELCO Service Tier</th><th>Scope</th><th>Estimated Fee (PKR)</th><th>Timeline</th></tr></thead>
+      <tbody>
+        <tr><td><strong style="color:var(--navy)">Tier 1 — Discovery Sprint</strong></td><td>Full OIA audit + ROI report + prioritised roadmap</td><td><input type="text" placeholder="e.g. 250,000"/></td><td>2 weeks</td></tr>
+        <tr><td><strong style="color:var(--navy)">Tier 2 — Implementation</strong></td><td>Design, build and deploy top 3 automation initiatives</td><td><input type="text" placeholder="e.g. 1,200,000"/></td><td>6–8 weeks</td></tr>
+        <tr><td><strong style="color:var(--navy)">Tier 3 — Retained Optimisation</strong></td><td>Monthly KPI review, system iteration, new initiatives</td><td><input type="text" placeholder="e.g. 150,000/mo"/></td><td>Ongoing</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">9.3 — Consultant Recommendation & Next Steps</div>
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label>Recommended engagement tier</label>
+      <select class="field"><option>Tier 1 — Discovery Sprint</option><option>Tier 2 — Implementation</option><option>Tier 3 — Retained Optimisation</option><option>Remediation Programme (pre-Tier 1)</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label>Rationale</label>
+      <textarea class="field" rows="4" placeholder="Explain why this tier is recommended based on the audit findings…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Proposed Start Date</label>
+      <input class="field" type="date"/>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SECTION 10: SIGN-OFF ───────────────────────────── -->
+<div class="section-panel" id="panel-10">
+  <div class="page-title">Section 10 — Audit Sign-Off & Declaration</div>
+  <div class="page-sub">Formal declaration by consultant and client acknowledgement.</div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <p style="font-size:.875rem;line-height:1.75;color:#555;margin-bottom:1.25rem;">This Organizational Intelligence Audit has been conducted in accordance with the professional standards of the Institute of Cost and Management Accountants of Pakistan (ICMAP) and the consulting methodology of RELCO Digital Solutions. The findings are based on information provided by client representatives during the audit process and have not been independently verified unless otherwise stated.</p>
+
+    <div class="sign-grid">
+      <div class="sign-box">
+        <h4>Consultant Sign-Off</h4>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Name</label><input class="field" value="Misbah Ul Alam, CMA" readonly/></div>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Title</label><input class="field" value="Principal AI Strategist" readonly/></div>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Organisation</label><input class="field" value="RELCO Digital Solutions" readonly/></div>
+        <div class="sign-line"></div>
+        <div class="sign-label">Signature</div>
+        <div class="form-group" style="margin-top:.75rem;"><label>Date</label><input class="field" type="date"/></div>
+      </div>
+      <div class="sign-box">
+        <h4>Client Acknowledgement</h4>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Name</label><input class="field" placeholder="Client representative name"/></div>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Title / Designation</label><input class="field" placeholder="e.g. Chief Financial Officer"/></div>
+        <div class="form-group" style="margin-bottom:.75rem;"><label>Organisation</label><input class="field" placeholder="Organisation name"/></div>
+        <div class="sign-line"></div>
+        <div class="sign-label">Signature</div>
+        <div class="form-group" style="margin-top:.75rem;"><label>Date</label><input class="field" type="date"/></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-box" style="margin-top:1.25rem;">
+    <strong>Confidentiality Notice</strong>
+    This document and its contents are the proprietary intellectual property of RELCO Digital Solutions. The audit methodology, scoring framework, and ROI projection model contained herein are not to be reproduced, shared, or adapted without written permission from RELCO Digital Solutions. Client data collected during the audit is held in strict confidence.
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-gold" onclick="window.print()">⎙ Export Full Audit as PDF</button>
+    <button class="btn-primary" onclick="go(0)">← Start New Audit</button>
+  </div>
+
+  <div style="text-align:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+    <div style="font-family:var(--font-head);font-size:1rem;color:var(--navy);font-weight:700;margin-bottom:.25rem;">RELCO Digital Solutions</div>
+    <div style="font-size:.8rem;color:#999;">Principal AI Strategist: Misbah Ul Alam, CMA &nbsp;·&nbsp; bariumconsulting.vercel.app</div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const D3_QUESTIONS = [
+  "Critical business data is stored in named digital systems (ERP, CRM, etc.)",
+  "Data entry follows consistent formats and naming conventions across all departments",
+  "Records are updated in real time or within 24 hours of transactions",
+  "Historical data exists for at least 24 months in an accessible and structured form",
+  "Data is accessible by authorised staff without dependence on any single individual",
+  "Systems generate exportable reports without requiring manual reformatting",
+  "Duplicate or conflicting records are systematically identified and resolved",
+  "Data backup and recovery procedures are documented, tested and current",
+];
+const D4_QUESTIONS = [
+  "Primary business systems have publicly documented and accessible APIs",
+  "IT team has prior experience connecting third-party tools to existing systems",
+  "Organisation has used automation tools previously (Zapier, Power Automate, etc.)",
+  "Cloud-based systems are in use (vs. purely on-premise infrastructure)",
+  "Data exports from core systems are possible in structured formats (CSV, JSON, XML)",
+  "IT department has capacity to support a 2-month integration project",
+];
+const D6_QUESTIONS = [
+  "Senior leadership has a clear understanding of what AI automation is and is not",
+  "There is an identified internal champion for the AI transformation initiative",
+  "Leadership is willing to allocate 6–10 hours of management time to implementation",
+  "A change management plan exists for staff whose roles will be affected",
+  "Leadership accepts that some roles will be restructured (not necessarily made redundant)",
+  "Budget has been allocated or ringfenced for AI implementation activities",
+];
+
+// ── SCORING STATE ─────────────────────────────────────────
+let scores = { d3: 0, d4: 0, d6: 0 };
+
+function buildScoreTable(questions, tbodyId, domain, maxPer=5) {
+  const tbody = document.getElementById(tbodyId);
+  questions.forEach((q, i) => {
+    const tr = document.createElement('tr');
+    let radios = '';
+    for(let s=1; s<=5; s++){
+      const id = `${domain}-${i}-${s}`;
+      radios += `<td style="text-align:center;min-width:36px">
+        <div class="score-cell">
+          <input type="radio" class="score-radio" name="${domain}-${i}" id="${id}" value="${s}" onchange="calcScores()"/>
+          <label class="score-label" for="${id}">${s}</label>
+        </div></td>`;
+    }
+    tr.innerHTML = `<td style="font-size:.82rem;line-height:1.5">${q}</td>${radios}
+      <td class="score-total-cell" id="${domain}-row-${i}">—</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function calcScores() {
+  ['d3','d4','d6'].forEach(d => {
+    const qs = d==='d3'?D3_QUESTIONS:d==='d4'?D4_QUESTIONS:D6_QUESTIONS;
+    let total = 0;
+    qs.forEach((q,i) => {
+      const checked = document.querySelector(`input[name="${d}-${i}"]:checked`);
+      const val = checked ? parseInt(checked.value) : 0;
+      total += val;
+      const cell = document.getElementById(`${d}-row-${i}`);
+      if(cell) cell.textContent = checked ? val : '—';
+    });
+    scores[d] = total;
+    const maxMap = {d3:40,d4:30,d6:30};
+    const el = document.getElementById(`${d}-score`);
+    if(el) el.textContent = total;
+    updateScoreDisplays();
+  });
+}
+
+function updateScoreDisplays() {
+  const d3 = scores.d3, d4 = scores.d4, d6 = scores.d6;
+  // Normalise to 100 (40+30+30)
+  const total = Math.round((d3/40)*40 + (d4/30)*30 + (d6/30)*30);
+
+  // sidebar
+  document.getElementById('total-score-display').textContent = total;
+  document.getElementById('total-bar').style.width = total+'%';
+
+  // all score mirrors
+  const sets = [
+    ['sum-d3','sum-b3','sum-d4','sum-b4','sum-d6','sum-b6','sum-total','sum-btotal','sum-band'],
+    ['m-d3','m-b3','m-d4','m-b4','m-d6','m-b6','m-total','m-btotal','m-band'],
+  ];
+  sets.forEach(s => {
+    set(s[0],d3); set(s[1],(d3/40*100)+'%','w');
+    set(s[2],d4); set(s[3],(d4/30*100)+'%','w');
+    set(s[4],d6); set(s[5],(d6/30*100)+'%','w');
+    set(s[6],total); set(s[7],total+'%','w');
+    const band = getBand(total);
+    const bEl = document.getElementById(s[8]);
+    if(bEl){ bEl.textContent=band.label; bEl.style.background=band.bg; bEl.style.color=band.color; }
+  });
+
+  const band = getBand(total);
+  document.getElementById('score-band-label').textContent = band.label;
+  document.getElementById('score-band-label').style.color = band.color;
+}
+
+function set(id, val, type) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(type==='w') el.style.width = val;
+  else el.textContent = val;
+}
+
+function getBand(score) {
+  if(score<=20) return {label:'Not Ready',    bg:'#FFE8E8',color:'#8B0000'};
+  if(score<=40) return {label:'Early Stage',  bg:'#FEF3DC',color:'#633806'};
+  if(score<=60) return {label:'Developing',   bg:'#FFFBD0',color:'#7A6000'};
+  if(score<=80) return {label:'Ready',        bg:'#D5F0E8',color:'#085041'};
+               return {label:'Advanced',      bg:'#E6F1FB',color:'#0C447C'};
+}
+
+// ── DYNAMIC ROWS ──────────────────────────────────────────
+function addProcessRow() {
+  const tbody = document.getElementById('process-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="e.g. Monthly payroll processing"/></td>
+    <td><select><option>Finance</option><option>HR</option><option>Procurement</option><option>Sales</option><option>Operations</option><option>IT</option><option>Other</option></select></td>
+    <td><input type="text" placeholder="Name"/></td>
+    <td><select><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Quarterly</option><option>Ad-hoc</option></select></td>
+    <td><input type="number" placeholder="0" min="0" step="0.5"/></td>
+    <td><input type="text" placeholder="0"/></td>
+    <td><input type="number" placeholder="0" min="0" max="100"/></td>
+    <td><select><option>High</option><option>Medium</option><option>Low</option></select></td>`;
+  tbody.appendChild(tr);
+}
+
+function addDepRow() {
+  const tbody = document.getElementById('dep-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Process or knowledge area"/></td>
+    <td><input type="text" placeholder="Person's name / role"/></td>
+    <td><select><option>Critical</option><option>High</option><option>Medium</option></select></td>
+    <td><select><option>Yes</option><option>No</option><option>Partial</option></select></td>
+    <td><input type="text" placeholder="How AI can mitigate this dependency"/></td>`;
+  tbody.appendChild(tr);
+}
+
+function addRoiRow() {
+  const tbody = document.getElementById('roi-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Process name"/></td>
+    <td><input type="text" placeholder="e.g. 480,000" oninput="calcRoiTotal()" class="roi-annual"/></td>
+    <td><input type="number" placeholder="%" min="0" max="100" oninput="calcRoiTotal()" class="roi-pct"/></td>
+    <td class="roi-recoverable" style="font-family:var(--font-mono);font-weight:600;color:var(--navy);">—</td>`;
+  tbody.appendChild(tr);
+  calcRoiTotal();
+}
+
+function calcRoiTotal() {
+  let total = 0;
+  document.querySelectorAll('#roi-tbody tr').forEach(tr => {
+    const annualEl = tr.querySelector('.roi-annual');
+    const pctEl = tr.querySelector('.roi-pct');
+    const recEl = tr.querySelector('.roi-recoverable');
+    if(!annualEl) return;
+    const annual = parseFloat((annualEl.value||'0').replace(/,/g,'')) || 0;
+    const pct = parseFloat(pctEl?.value||0) / 100;
+    const recoverable = Math.round(annual * pct);
+    total += recoverable;
+    if(recEl) recEl.textContent = recoverable > 0 ? 'PKR '+recoverable.toLocaleString() : '—';
+  });
+  const el = document.getElementById('roi-total-display');
+  if(el) el.textContent = 'PKR ' + total.toLocaleString();
+}
+
+function addRoadmapRow() {
+  const tbody = document.getElementById('roadmap-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Initiative name"/></td>
+    <td><select>
+      <option value="h1">H1 (0–3 months)</option>
+      <option value="h2">H2 (3–9 months)</option>
+      <option value="h3">H3 (9–18 months)</option>
+    </select></td>
+    <td><select><option>High</option><option>Medium</option><option>Low</option></select></td>
+    <td><select><option>Low</option><option>Medium</option><option>High</option></select></td>
+    <td><select><option>Low</option><option>Medium</option><option>High</option></select></td>
+    <td><input type="text" placeholder="e.g. Make.com + Gmail"/></td>`;
+  tbody.appendChild(tr);
+}
+
+function addGapRow() {
+  const tbody = document.querySelector('#panel-3 tbody:last-of-type') || document.querySelector('#panel-3 table:last-of-type tbody');
+  // Find the gap table specifically
+  const tables = document.querySelectorAll('#panel-3 table');
+  const gapTable = tables[tables.length-1];
+  if(!gapTable) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Describe the gap"/></td>
+    <td><input type="text" placeholder="Department"/></td>
+    <td><select><option>High</option><option>Medium</option><option>Low</option></select></td>
+    <td><input type="text" placeholder="What needs to be fixed"/></td>`;
+  gapTable.querySelector('tbody').appendChild(tr);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function go(n) {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('panel-'+n).classList.add('active');
+  document.querySelectorAll('.nav-item')[n].classList.add('active');
+  updateScoreDisplays();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildScoreTable(D3_QUESTIONS, 'd3-tbody', 'd3');
+  buildScoreTable(D4_QUESTIONS, 'd4-tbody', 'd4');
+  buildScoreTable(D6_QUESTIONS, 'd6-tbody', 'd6');
+  // seed a few rows
+  addProcessRow(); addProcessRow(); addProcessRow();
+  addDepRow(); addDepRow(); addDepRow();
+  addRoiRow(); addRoiRow(); addRoiRow();
+  addRoadmapRow(); addRoadmapRow(); addRoadmapRow();
+  // set today's date
+  const today = new Date().toISOString().split('T')[0];
+  const dateField = document.getElementById('c-date');
+  if(dateField) dateField.value = today;
+  updateScoreDisplays();
+});
+</script>
+</body>
+</html>
