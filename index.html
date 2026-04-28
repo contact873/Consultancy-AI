@@ -1,0 +1,882 @@
+javascript
+
+const {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
+  ShadingType, VerticalAlign, PageNumber, PageBreak, LevelFormat,
+  TabStopType, TabStopPosition, UnderlineType
+} = require('docx');
+const fs = require('fs');
+
+// ── Colour palette ──────────────────────────────────────────────────────────
+const NAVY   = "1B3A6B";  // RELCO navy
+const GOLD   = "C8961E";  // RELCO gold accent
+const LTBLUE = "D6E4F0";  // light header fill
+const LTGOLD = "FDF3DC";  // light gold fill
+const GRAY   = "F5F5F5";  // alternate row
+const WHITE  = "FFFFFF";
+const DGRAY  = "444444";  // body text
+
+// ── Border helpers ───────────────────────────────────────────────────────────
+const thinBorder  = { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" };
+const thickBorder = { style: BorderStyle.SINGLE, size: 4, color: NAVY };
+const allThin  = { top: thinBorder,  bottom: thinBorder,  left: thinBorder,  right: thinBorder };
+const allThick = { top: thickBorder, bottom: thickBorder, left: thickBorder, right: thickBorder };
+const noBorder = { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } };
+
+// ── Text helpers ─────────────────────────────────────────────────────────────
+const run  = (text, opts={}) => new TextRun({ text, font:"Arial", size: opts.size||22, bold: opts.bold||false, color: opts.color||DGRAY, italics: opts.italic||false });
+const para = (children, opts={}) => new Paragraph({
+  alignment: opts.align || AlignmentType.LEFT,
+  spacing: { before: opts.before||0, after: opts.after||120 },
+  children: Array.isArray(children) ? children : [children],
+  ...(opts.heading ? { heading: opts.heading } : {}),
+  ...(opts.numbering ? { numbering: opts.numbering } : {}),
+  ...(opts.border ? { border: opts.border } : {}),
+});
+const blank = (space=80) => new Paragraph({ spacing:{ before:0, after:space }, children:[] });
+
+// ── Cell helpers ─────────────────────────────────────────────────────────────
+function cell(content, opts={}) {
+  const children = Array.isArray(content) ? content : [para(content, { align: opts.align||AlignmentType.LEFT })];
+  return new TableCell({
+    borders: opts.borders || allThin,
+    width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
+    shading: opts.fill ? { fill: opts.fill, type: ShadingType.CLEAR } : undefined,
+    verticalAlign: opts.vAlign || VerticalAlign.CENTER,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    columnSpan: opts.span || 1,
+    children,
+  });
+}
+
+function hdrCell(text, width, fill=NAVY) {
+  return cell([para(run(text,{bold:true,color:WHITE,size:20}))], { fill, width, borders: allThin });
+}
+
+function scoreRow(label, rowFill) {
+  return new TableRow({ children: [
+    cell([para(run(label,{size:20}))],           { fill: rowFill, width: 3960 }),
+    cell([para(run("",  {size:20}))],            { fill: rowFill, width: 900  }),
+    cell([para(run("",  {size:20}))],            { fill: rowFill, width: 900  }),
+    cell([para(run("",  {size:20}))],            { fill: rowFill, width: 900  }),
+    cell([para(run("",  {size:20}))],            { fill: rowFill, width: 900  }),
+    cell([para(run("",  {size:20}))],            { fill: rowFill, width: 900  }),
+    cell([para(run("",  {size:22,bold:true,color:NAVY}))], { fill: WHITE, width: 900 }),
+  ]});
+}
+
+function sectionTitle(text) {
+  return new Paragraph({
+    spacing: { before: 280, after: 100 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: GOLD } },
+    children: [run(text, { bold: true, size: 28, color: NAVY })],
+  });
+}
+
+function subTitle(text) {
+  return para(run(text, { bold: true, size: 24, color: NAVY }), { before: 180, after: 80 });
+}
+
+function bodyText(text) {
+  return para(run(text, { size: 20, color: DGRAY }), { after: 100 });
+}
+
+function noteBox(text) {
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [9360],
+    rows: [new TableRow({ children: [
+      cell([para(run(text, { size:19, italic:true, color: NAVY }))], { fill: LTBLUE, width: 9360, borders: noBorder })
+    ]})]
+  });
+}
+
+// ── COVER PAGE ───────────────────────────────────────────────────────────────
+function coverPage() {
+  return [
+    blank(1440),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 60 },
+      children: [run("RELCO DIGITAL SOLUTIONS", { bold: true, size: 20, color: GOLD })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 280 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: GOLD } },
+      children: [run("", { size: 10 })],
+    }),
+    blank(240),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 120 },
+      children: [run("ORGANIZATIONAL", { bold: true, size: 56, color: NAVY })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 120 },
+      children: [run("INTELLIGENCE AUDIT", { bold: true, size: 56, color: NAVY })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 400 },
+      children: [run("Proprietary Assessment Framework  |  RELCO Digital Solutions", { size: 22, color: GOLD, italic: true })],
+    }),
+    blank(360),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3120, 6240],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Client Organisation", 3120, NAVY),
+          cell([para(run("", {size:22}))], { fill: LTBLUE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Industry / Sector", 3120, NAVY),
+          cell([para(run("", {size:22}))], { fill: WHITE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Primary Contact", 3120, NAVY),
+          cell([para(run("", {size:22}))], { fill: LTBLUE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Designation", 3120, NAVY),
+          cell([para(run("", {size:22}))], { fill: WHITE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Audit Conducted by", 3120, NAVY),
+          cell([para(run("Misbah Ul Alam, CMA  |  Principal AI Strategist", {size:22, bold:true}))], { fill: LTBLUE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Date of Audit", 3120, NAVY),
+          cell([para(run("", {size:22}))], { fill: WHITE, width: 6240 }),
+        ]}),
+        new TableRow({ children: [
+          hdrCell("Report Reference", 3120, NAVY),
+          cell([para(run("RELCO-OIA-", {size:22}))], { fill: LTBLUE, width: 6240 }),
+        ]}),
+      ],
+    }),
+    blank(600),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 60 },
+      children: [run("STRICTLY CONFIDENTIAL", { bold: true, size: 18, color: GOLD })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [run("This document contains proprietary analytical methodology. For authorised recipient use only.", { size: 16, color: "888888", italic: true })],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 1: EXECUTIVE SUMMARY ─────────────────────────────────────────────
+function execSummary() {
+  return [
+    sectionTitle("Section 1  —  Executive Summary"),
+    blank(80),
+    bodyText("This Organizational Intelligence Audit (OIA) is a structured diagnostic conducted by RELCO Digital Solutions to assess an organisation's current operational state, its readiness to adopt AI automation, and the financial opportunity available through targeted workflow transformation."),
+    bodyText("The audit is conducted by a qualified Cost & Management Accountant (CMA) with specialisation in AI systems consulting. This dual qualification ensures that every recommendation is grounded in both technical feasibility and financial rigour — producing outcomes that are measurable, defensible, and aligned with management accounting standards."),
+    blank(80),
+    subTitle("Audit Scope Summary"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3120, 6240],
+      rows: [
+        new TableRow({ children: [ hdrCell("Audit Domain", 3120), hdrCell("Scope Covered", 6240) ]}),
+        ...[
+          ["Domain 1", "Process Inventory & Cost Mapping"],
+          ["Domain 2", "Data Quality & Readiness Assessment"],
+          ["Domain 3", "Technology Stack & Integration Readiness"],
+          ["Domain 4", "Human Dependency & Single-Point-of-Failure Analysis"],
+          ["Domain 5", "Leadership Readiness & Change Capacity"],
+          ["Overall",  "AI Readiness Score & Prioritised Roadmap"],
+        ].map(([d, s], i) => new TableRow({ children: [
+          cell([para(run(d, {bold:true, size:20}))], { fill: i%2===0?LTBLUE:WHITE, width:3120 }),
+          cell([para(run(s, {size:20}))],             { fill: i%2===0?LTBLUE:WHITE, width:6240 }),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("Overall AI Readiness Score"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [1872, 1872, 1872, 1872, 1872],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("0 – 20", 1872, "C0392B"),
+          hdrCell("21 – 40", 1872, "E67E22"),
+          hdrCell("41 – 60", 1872, "F1C40F"),
+          hdrCell("61 – 80", 1872, "27AE60"),
+          hdrCell("81 – 100", 1872, NAVY),
+        ]}),
+        new TableRow({ children: [
+          cell([para(run("Not ready",     {size:19,italic:true}))], { fill: "FDEDEC", width:1872 }),
+          cell([para(run("Early stage",   {size:19,italic:true}))], { fill: "FEF9E7", width:1872 }),
+          cell([para(run("Developing",    {size:19,italic:true}))], { fill: "FDFEFE", width:1872 }),
+          cell([para(run("Ready",         {size:19,italic:true}))], { fill: "EAFAF1", width:1872 }),
+          cell([para(run("Advanced",      {size:19,italic:true}))], { fill: LTBLUE,   width:1872 }),
+        ]}),
+      ],
+    }),
+    blank(120),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 4680],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Client Score (to be completed)", 4680, NAVY),
+          hdrCell("Readiness Band", 4680, GOLD),
+        ]}),
+        new TableRow({ children: [
+          cell([para(run("        / 100", {size:28, bold:true, color:NAVY}), {align:AlignmentType.CENTER})], { fill: LTBLUE, width:4680 }),
+          cell([para(run("", {size:28, bold:true, color:GOLD}), {align:AlignmentType.CENTER})],              { fill: LTGOLD, width:4680 }),
+        ]}),
+      ],
+    }),
+    blank(200),
+    subTitle("Headline Findings (Consultant to Complete)"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 4680],
+      rows: [
+        new TableRow({ children: [ hdrCell("Key Strength", 4680), hdrCell("Key Risk / Gap", 4680) ]}),
+        ...[1,2,3].map((_, i) => new TableRow({ children: [
+          cell([para(run("", {size:20}))], { fill: i%2===0?WHITE:GRAY, width:4680 }),
+          cell([para(run("", {size:20}))], { fill: i%2===0?WHITE:GRAY, width:4680 }),
+        ]})),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 2: PROCESS INVENTORY ─────────────────────────────────────────────
+function processInventory() {
+  return [
+    sectionTitle("Section 2  —  Process Inventory & Cost Mapping"),
+    blank(80),
+    bodyText("The process inventory is the foundation of the entire audit. Every recommendation made in subsequent sections flows from the cost and time data captured here. As a CMA-led engagement, all process costs are expressed in financial terms — not just operational inconvenience."),
+    blank(80),
+    noteBox("Instruction: Interview department heads and process owners. For each process, record the frequency, owner, time per execution, and estimated monthly cost. Cost = (time in hours) x (hourly rate of staff performing the task). Include burden rate (benefits, overhead) in the rate where possible."),
+    blank(120),
+    subTitle("2.1  Department Process Register"),
+    bodyText("Complete one row per significant recurring process. A significant process is defined as any activity consuming more than 4 hours of staff time per month OR any activity that is a dependency for another critical function."),
+    blank(80),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [1800, 1000, 1000, 900, 900, 1260, 900, 1600],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Process Name", 1800),
+          hdrCell("Department", 1000),
+          hdrCell("Process Owner", 1000),
+          hdrCell("Frequency", 900),
+          hdrCell("Time / Run (hrs)", 900),
+          hdrCell("Monthly Cost (PKR)", 1260),
+          hdrCell("Error Rate %", 900),
+          hdrCell("Automation Potential", 1600),
+        ]}),
+        ...[1,2,3,4,5,6,7,8].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:1000}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:1000}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:900}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:900}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:1260}),
+          cell([para(run("",{size:19}))], {fill:i%2===0?WHITE:GRAY, width:900}),
+          cell([para(run("High / Medium / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1600}),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("2.2  Automation Potential Rating Guide"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [1560, 4680, 3120],
+      rows: [
+        new TableRow({ children: [ hdrCell("Rating", 1560), hdrCell("Criteria", 4680), hdrCell("Typical AI Tool", 3120) ]}),
+        ...[ 
+          ["High",   "Repetitive, rule-based, structured data input/output, minimal judgment required", "Make.com / n8n workflow"],
+          ["Medium", "Semi-structured, some exceptions handled, requires basic interpretation",           "Relevance AI agent with human-in-loop"],
+          ["Low",    "Highly variable, judgment-intensive, relationship-dependent, regulatory nuance",    "AI-assisted, not AI-replaced"],
+        ].map(([r, c, t], i) => new TableRow({ children: [
+          cell([para(run(r, {bold:true, size:20}))], { fill: i===0?LTGOLD:i===1?LTBLUE:GRAY, width:1560 }),
+          cell([para(run(c, {size:20}))],             { fill: i===0?LTGOLD:i===1?LTBLUE:GRAY, width:4680 }),
+          cell([para(run(t, {size:19, italic:true}))],{ fill: i===0?LTGOLD:i===1?LTBLUE:GRAY, width:3120 }),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("2.3  Total Cost of Manual Operations Summary"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3960, 1800, 1800, 1800],
+      rows: [
+        new TableRow({ children: [ hdrCell("Department", 3960), hdrCell("Monthly Cost (PKR)", 1800), hdrCell("Annual Cost (PKR)", 1800), hdrCell("% Automatable", 1800) ]}),
+        ...["Finance & Accounts","Human Resources","Procurement / Supply Chain","Sales & Business Development","Operations / Production","IT & Administration","TOTAL"].map((dept, i) => {
+          const isTotal = i === 6;
+          return new TableRow({ children: [
+            cell([para(run(dept, {bold:isTotal, size:20, color:isTotal?NAVY:DGRAY}))], { fill:isTotal?LTBLUE:i%2===0?WHITE:GRAY, width:3960 }),
+            cell([para(run("", {bold:isTotal, size:20}))], { fill:isTotal?LTBLUE:i%2===0?WHITE:GRAY, width:1800 }),
+            cell([para(run("", {bold:isTotal, size:20}))], { fill:isTotal?LTBLUE:i%2===0?WHITE:GRAY, width:1800 }),
+            cell([para(run("", {bold:isTotal, size:20}))], { fill:isTotal?LTBLUE:i%2===0?WHITE:GRAY, width:1800 }),
+          ]});
+        }),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 3: DATA QUALITY ───────────────────────────────────────────────────
+function dataQuality() {
+  const scoreQ = (q, i) => new TableRow({ children: [
+    cell([para(run(q, {size:20}))], { fill:i%2===0?WHITE:GRAY, width:4860 }),
+    ...[1,2,3,4,5].map(s => cell([para(run("", {size:20}), {align:AlignmentType.CENTER})], { fill:i%2===0?WHITE:GRAY, width:720 })),
+    cell([para(run("",{size:20}))], { fill:i%2===0?WHITE:GRAY, width:960 }),
+  ]});
+
+  const questions = [
+    "Critical business data is stored in named digital systems (ERP, CRM, etc.)",
+    "Data entry follows consistent formats and naming conventions",
+    "Records are updated in real time or within 24 hours of transactions",
+    "Historical data exists for at least 24 months in accessible form",
+    "Data is accessible by authorised staff without dependence on one individual",
+    "Systems generate exportable reports without manual reformatting",
+    "Duplicate or conflicting records are systematically identified and resolved",
+    "Data backup and recovery procedures are documented and tested",
+  ];
+
+  return [
+    sectionTitle("Section 3  —  Data Quality & Readiness Assessment"),
+    blank(80),
+    bodyText("AI agents are only as effective as the data they operate on. Poor data quality is the single most common reason AI implementations fail after deployment. This section scores the organisation's data environment on five dimensions critical to AI readiness."),
+    blank(80),
+    noteBox("Scoring: 1 = Not in place, 2 = Partially in place, 3 = Inconsistently applied, 4 = Mostly in place, 5 = Fully in place and verified. Score each item during the interview. Do not accept verbal assurance without evidence — request a system demonstration where possible."),
+    blank(120),
+    subTitle("3.1  Data Quality Scorecard"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4860, 720, 720, 720, 720, 720, 960],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Assessment Criterion", 4860),
+          hdrCell("1", 720), hdrCell("2", 720), hdrCell("3", 720), hdrCell("4", 720), hdrCell("5", 720),
+          hdrCell("Score", 960),
+        ]}),
+        ...questions.map(scoreQ),
+        new TableRow({ children: [
+          cell([para(run("Total Data Quality Score  (max 40)", {bold:true, size:20, color:NAVY}))], { fill:LTBLUE, width:4860 }),
+          ...Array(5).fill(cell([para(run(""))], { fill:LTBLUE, width:720 })),
+          cell([para(run("   / 40",{bold:true, size:22, color:NAVY}))], { fill:LTBLUE, width:960 }),
+        ]}),
+      ],
+    }),
+    blank(160),
+    subTitle("3.2  Data Gap Register"),
+    bodyText("Document specific data gaps identified during the interview. Each gap must be resolved before the relevant AI automation can be deployed."),
+    blank(80),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2340, 2340, 2340, 2340],
+      rows: [
+        new TableRow({ children: [ hdrCell("Data Gap Identified", 2340), hdrCell("Department Affected", 2340), hdrCell("Impact on AI Readiness", 2340), hdrCell("Remediation Required", 2340) ]}),
+        ...[1,2,3,4].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+          cell([para(run("High / Medium / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+        ]})),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 4: TECH STACK ─────────────────────────────────────────────────────
+function techStack() {
+  return [
+    sectionTitle("Section 4  —  Technology Stack & Integration Readiness"),
+    blank(80),
+    bodyText("This section inventories all software systems currently in use and assesses their integration capability. AI agents work by connecting to existing systems via APIs or direct integrations. An organisation with modern, API-enabled systems can be automated in weeks. One relying on legacy or closed systems may require months of preparatory infrastructure work."),
+    blank(80),
+    subTitle("4.1  Current Systems Inventory"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2000, 1400, 1400, 1200, 1200, 2160],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("System / Software", 2000), hdrCell("Function", 1400), hdrCell("Vendor", 1400),
+          hdrCell("API Available?", 1200), hdrCell("Age (years)", 1200), hdrCell("Integration Notes", 2160),
+        ]}),
+        ...["ERP / Accounting System","CRM / Sales System","HR & Payroll System","Communication (Email/WhatsApp)","Document Management","Reporting / BI Tool","Other"].map((sys, i) => new TableRow({ children: [
+          cell([para(run(sys,  {size:19,bold:true}))],   {fill:i%2===0?WHITE:GRAY, width:2000}),
+          cell([para(run("",   {size:19}))],              {fill:i%2===0?WHITE:GRAY, width:1400}),
+          cell([para(run("",   {size:19}))],              {fill:i%2===0?WHITE:GRAY, width:1400}),
+          cell([para(run("Yes / No / Unknown",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("",   {size:19}))],              {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("",   {size:19}))],              {fill:i%2===0?WHITE:GRAY, width:2160}),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("4.2  Integration Readiness Score"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4860, 720, 720, 720, 720, 720, 960],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Criterion", 4860),
+          hdrCell("1",720), hdrCell("2",720), hdrCell("3",720), hdrCell("4",720), hdrCell("5",720),
+          hdrCell("Score", 960),
+        ]}),
+        ...[
+          "Primary business systems have publicly documented APIs",
+          "IT team has experience connecting third-party tools to existing systems",
+          "Organisation has used automation tools (Zapier, Power Automate) previously",
+          "Cloud-based systems are in use (vs. purely on-premise)",
+          "Data exports from core systems are possible in structured formats (CSV, JSON, XML)",
+          "IT department has capacity to support a 2-month integration project",
+        ].map((q, i) => new TableRow({ children: [
+          cell([para(run(q,{size:20}))], {fill:i%2===0?WHITE:GRAY, width:4860}),
+          ...[1,2,3,4,5].map(s => cell([para(run(""))], {fill:i%2===0?WHITE:GRAY, width:720})),
+          cell([para(run(""))], {fill:i%2===0?WHITE:GRAY, width:960}),
+        ]})),
+        new TableRow({ children: [
+          cell([para(run("Total Integration Readiness Score  (max 30)", {bold:true, size:20, color:NAVY}))], {fill:LTBLUE, width:4860}),
+          ...Array(5).fill(cell([para(run(""))], {fill:LTBLUE, width:720})),
+          cell([para(run("   / 30",{bold:true, size:22, color:NAVY}))], {fill:LTBLUE, width:960}),
+        ]}),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 5: HUMAN DEPENDENCY ───────────────────────────────────────────────
+function humanDependency() {
+  return [
+    sectionTitle("Section 5  —  Human Dependency & Single-Point-of-Failure Analysis"),
+    blank(80),
+    bodyText("This section identifies processes and knowledge that are critically dependent on specific individuals. From a risk management perspective — and a management accounting perspective — human single points of failure represent both operational risk and hidden cost. AI automation systematically eliminates this class of risk."),
+    blank(80),
+    noteBox("This section often produces the most revealing data in the audit. Ask directly: 'If [person] left tomorrow, what would stop working?' and 'Who is the only person who knows how to do X?' Document candidly. These are the highest-priority automation targets."),
+    blank(120),
+    subTitle("5.1  Critical Dependency Register"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2000, 1600, 1400, 1400, 2960],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Process / Knowledge Area", 2000), hdrCell("Dependent Individual", 1600),
+          hdrCell("Impact if Unavailable", 1400), hdrCell("Documented?", 1400), hdrCell("AI Mitigation Available", 2960),
+        ]}),
+        ...[1,2,3,4,5,6].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2000}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1600}),
+          cell([para(run("Critical / High / Medium",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1400}),
+          cell([para(run("Yes / No / Partial",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1400}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2960}),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("5.2  Knowledge Capture Priority Matrix"),
+    bodyText("Before an AI agent can replicate a human-dependent process, the process must be documented. Score each critical dependency on captureability."),
+    blank(80),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2600, 1400, 1800, 1800, 1760],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Process", 2600), hdrCell("Captureability\n(1–5)", 1400), hdrCell("Estimated Capture\nEffort (days)", 1800), hdrCell("Automation ROI\nPotential", 1800), hdrCell("Priority Rank", 1760),
+        ]}),
+        ...[1,2,3,4,5].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2600}),
+          cell([para(run("",{size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:1400}),
+          cell([para(run("",{size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("High / Medium / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:1760}),
+        ]})),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 6: LEADERSHIP READINESS ──────────────────────────────────────────
+function leadershipReadiness() {
+  const lqs = [
+    "Senior leadership has a clear understanding of what AI automation is and is not",
+    "There is an identified internal champion for the AI transformation initiative",
+    "Leadership is willing to allocate 6–10 hours of management time to the implementation",
+    "A change management plan or communication strategy exists for staff affected by automation",
+    "Leadership accepts that some roles will be restructured (not necessarily made redundant)",
+    "Budget has been allocated or ringfenced for AI implementation",
+    "Success metrics (KPIs) for the AI programme have been discussed at leadership level",
+    "Previous technology change initiatives have been completed successfully",
+  ];
+  return [
+    sectionTitle("Section 6  —  Leadership Readiness & Change Capacity"),
+    blank(80),
+    bodyText("Technology implementations fail not because of the technology — they fail because of the organisation's capacity to adopt change. This section assesses whether the leadership team has the mindset, bandwidth, and governance structures to drive an AI transformation to completion."),
+    blank(80),
+    noteBox("Administer this section directly with the CEO, MD, or CFO — not a delegated representative. The answers reveal the true sponsorship level for the initiative. If the most senior person available scores below 24, document this as a risk and include a change management phase in the engagement proposal."),
+    blank(120),
+    subTitle("6.1  Leadership & Change Readiness Scorecard"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4860, 720, 720, 720, 720, 720, 960],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Assessment Criterion", 4860),
+          hdrCell("1",720), hdrCell("2",720), hdrCell("3",720), hdrCell("4",720), hdrCell("5",720),
+          hdrCell("Score", 960),
+        ]}),
+        ...lqs.map((q, i) => new TableRow({ children: [
+          cell([para(run(q,{size:20}))], {fill:i%2===0?WHITE:GRAY, width:4860}),
+          ...[1,2,3,4,5].map(() => cell([para(run(""))], {fill:i%2===0?WHITE:GRAY, width:720})),
+          cell([para(run(""))], {fill:i%2===0?WHITE:GRAY, width:960}),
+        ]})),
+        new TableRow({ children: [
+          cell([para(run("Total Leadership Readiness Score  (max 40)", {bold:true, size:20, color:NAVY}))], {fill:LTBLUE, width:4860}),
+          ...Array(5).fill(cell([para(run(""))], {fill:LTBLUE, width:720})),
+          cell([para(run("   / 40",{bold:true, size:22, color:NAVY}))], {fill:LTBLUE, width:960}),
+        ]}),
+      ],
+    }),
+    blank(160),
+    subTitle("6.2  Qualitative Leadership Notes"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 4680],
+      rows: [
+        new TableRow({ children: [ hdrCell("Observed Strengths", 4680), hdrCell("Observed Risks / Concerns", 4680) ]}),
+        new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+          cell([para(run("",{size:20}))], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+        ]}),
+        new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+          cell([para(run("",{size:20}))], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+        ]}),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 7: MASTER SCORECARD ───────────────────────────────────────────────
+function masterScorecard() {
+  return [
+    sectionTitle("Section 7  —  Master AI Readiness Scorecard"),
+    blank(80),
+    bodyText("The Master Scorecard consolidates scores from all five audit domains into a single composite AI Readiness Score. This score is the headline figure presented to the client and forms the basis for the engagement proposal."),
+    blank(120),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3960, 1560, 1560, 2280],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Audit Domain", 3960), hdrCell("Max Score", 1560), hdrCell("Client Score", 1560), hdrCell("Weighted %", 2280),
+        ]}),
+        ...[ 
+          ["Domain 2: Data Quality & Readiness",          "40"],
+          ["Domain 3: Technology Stack Readiness",        "30"],
+          ["Domain 4: Process Automation Potential",      "varies"],
+          ["Domain 5: Human Dependency Risk",             "varies"],
+          ["Domain 6: Leadership & Change Readiness",     "40"],
+        ].map(([d, m], i) => new TableRow({ children: [
+          cell([para(run(d, {size:20}))],  {fill:i%2===0?WHITE:GRAY, width:3960}),
+          cell([para(run(m, {size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:1560}),
+          cell([para(run("", {size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:1560}),
+          cell([para(run("", {size:20}), {align:AlignmentType.CENTER})], {fill:i%2===0?WHITE:GRAY, width:2280}),
+        ]})),
+        new TableRow({ children: [
+          cell([para(run("COMPOSITE AI READINESS SCORE", {bold:true, size:22, color:WHITE}))], {fill:NAVY, width:3960}),
+          cell([para(run("100", {bold:true, size:22, color:WHITE}), {align:AlignmentType.CENTER})], {fill:NAVY, width:1560}),
+          cell([para(run("    / 100", {bold:true, size:24, color:GOLD}), {align:AlignmentType.CENTER})], {fill:NAVY, width:1560}),
+          cell([para(run("", {bold:true, size:22, color:WHITE}), {align:AlignmentType.CENTER})], {fill:NAVY, width:2280}),
+        ]}),
+      ],
+    }),
+    blank(200),
+    subTitle("7.1  Score Interpretation & Recommended Engagement"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [1560, 2200, 2800, 2800],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Score", 1560), hdrCell("Band", 2200), hdrCell("Interpretation", 2800), hdrCell("RELCO Recommended Action", 2800),
+        ]}),
+        ...[
+          ["0–20",  "Not Ready",   "Critical gaps in data, systems, or leadership. AI will fail without foundational fixes.", "Readiness Remediation Programme — 3 to 6 months before AI implementation"],
+          ["21–40", "Early Stage", "Some foundations exist. High dependency on individuals. Limited digital systems.",          "Discovery Sprint + Data & Systems Baseline (Tier 1 expanded)"],
+          ["41–60", "Developing",  "Mixed readiness. Strong pockets alongside significant gaps. Leadership engaged.",           "Discovery Sprint → phased Implementation starting with highest-ROI process"],
+          ["61–80", "Ready",       "Solid foundations. Systems connected. Data structured. Leadership committed.",              "Full Implementation engagement — 8-week deployment recommended"],
+          ["81–100","Advanced",    "Exceptional readiness. AI can be deployed across multiple processes simultaneously.",        "Enterprise AI Workforce deployment — multi-agent, multi-department rollout"],
+        ].map(([s, b, i, r], idx) => new TableRow({ children: [
+          cell([para(run(s, {bold:true, size:20, color:NAVY}), {align:AlignmentType.CENTER})], {fill:idx%2===0?WHITE:GRAY, width:1560}),
+          cell([para(run(b, {bold:true, size:20}))],  {fill:idx%2===0?WHITE:GRAY, width:2200}),
+          cell([para(run(i, {size:19}))],              {fill:idx%2===0?WHITE:GRAY, width:2800}),
+          cell([para(run(r, {size:19, italic:true, color:NAVY}))], {fill:idx%2===0?WHITE:GRAY, width:2800}),
+        ]})),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 8: ROI PROJECTION ─────────────────────────────────────────────────
+function roiProjection() {
+  return [
+    sectionTitle("Section 8  —  12-Month AI ROI Projection"),
+    blank(80),
+    bodyText("This section translates audit findings into a financial business case. As a CMA-led engagement, RELCO provides a management accounting-standard ROI analysis — not a vendor promise. All projections are based on data collected during the audit and clearly labelled as estimates subject to agreed assumptions."),
+    blank(80),
+    noteBox("Complete this section after Sections 2–6 are fully scored. The figures here become the core of your engagement proposal and the client's internal business case for board approval. Always present a conservative estimate. Under-promise and over-deliver."),
+    blank(120),
+    subTitle("8.1  Annual Cost of Manual Operations (Baseline)"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3960, 1800, 1800, 1800],
+      rows: [
+        new TableRow({ children: [ hdrCell("Process / Function", 3960), hdrCell("Annual Cost PKR", 1800), hdrCell("% Automatable", 1800), hdrCell("Recoverable Cost PKR", 1800) ]}),
+        ...[1,2,3,4,5,6].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:3960}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+        ]})),
+        new TableRow({ children: [
+          cell([para(run("TOTAL ANNUAL RECOVERABLE COST", {bold:true, size:20, color:WHITE}))],   {fill:NAVY, width:3960}),
+          cell([para(run("", {bold:true}))], {fill:NAVY, width:1800}),
+          cell([para(run("", {bold:true}))], {fill:NAVY, width:1800}),
+          cell([para(run("PKR", {bold:true, size:22, color:GOLD}))], {fill:NAVY, width:1800}),
+        ]}),
+      ],
+    }),
+    blank(160),
+    subTitle("8.2  Implementation Cost Estimate"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 2340, 2340],
+      rows: [
+        new TableRow({ children: [ hdrCell("Cost Item", 4680), hdrCell("One-Time (PKR)", 2340), hdrCell("Monthly Recurring (PKR)", 2340) ]}),
+        ...["RELCO Discovery Sprint fee","RELCO Implementation fee","Automation platform licences (Make.com / n8n)","AI agent platform (Relevance AI)","Internal staff time (estimated)","Training & change management","Contingency (15%)"].map((item, i) => new TableRow({ children: [
+          cell([para(run(item,{size:20}))], {fill:i%2===0?WHITE:GRAY, width:4680}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2340}),
+        ]})),
+        new TableRow({ children: [
+          cell([para(run("TOTAL IMPLEMENTATION COST", {bold:true, size:20, color:WHITE}))], {fill:NAVY, width:4680}),
+          cell([para(run("PKR", {bold:true, size:22, color:GOLD}))], {fill:NAVY, width:2340}),
+          cell([para(run("PKR / mo", {bold:true, size:22, color:GOLD}))], {fill:NAVY, width:2340}),
+        ]}),
+      ],
+    }),
+    blank(160),
+    subTitle("8.3  Net ROI Summary"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [3960, 1800, 1800, 1800],
+      rows: [
+        new TableRow({ children: [ hdrCell("Metric", 3960), hdrCell("Year 1 (PKR)", 1800), hdrCell("Year 2 (PKR)", 1800), hdrCell("Year 3 (PKR)", 1800) ]}),
+        ...["Annual cost recovered through automation","Total implementation cost (amortised)","Net financial benefit","Cumulative net benefit","Return on Investment (%)","Payback period (months)"].map((m, i) => new TableRow({ children: [
+          cell([para(run(m, {size:20, bold:i===4||i===5}))], {fill:i%2===0?WHITE:GRAY, width:3960}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:1800}),
+        ]})),
+      ],
+    }),
+    blank(160),
+    noteBox("CMA sign-off note: The projections above are prepared on the basis of data collected during the Organizational Intelligence Audit. They are estimates prepared in good faith and subject to the assumptions documented in the audit workpapers. Actual outcomes will depend on implementation quality, change adoption, and data readiness remediation. RELCO Digital Solutions provides a 90-day post-implementation review to validate projected savings against actuals."),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 9: ROADMAP ────────────────────────────────────────────────────────
+function roadmap() {
+  return [
+    sectionTitle("Section 9  —  Prioritised AI Implementation Roadmap"),
+    blank(80),
+    bodyText("The roadmap sequences automation initiatives in order of financial return, implementation feasibility, and strategic impact. Initiatives are grouped into three horizons: quick wins (0–3 months), core automation (3–9 months), and advanced AI (9–18 months)."),
+    blank(120),
+    subTitle("9.1  Initiative Priority Matrix"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2400, 1200, 1200, 1200, 1200, 2160],
+      rows: [
+        new TableRow({ children: [
+          hdrCell("Initiative", 2400), hdrCell("Horizon", 1200), hdrCell("ROI Potential", 1200),
+          hdrCell("Effort", 1200), hdrCell("Risk", 1200), hdrCell("Recommended Tool", 2160),
+        ]}),
+        ...[1,2,3,4,5,6,7,8].map((_, i) => new TableRow({ children: [
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2400}),
+          cell([para(run("H1 / H2 / H3",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("High / Med / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("High / Med / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("High / Med / Low",{size:17,italic:true,color:"888888"}))], {fill:i%2===0?WHITE:GRAY, width:1200}),
+          cell([para(run("",{size:20}))], {fill:i%2===0?WHITE:GRAY, width:2160}),
+        ]})),
+      ],
+    }),
+    blank(160),
+    subTitle("9.2  Engagement Recommendation"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2400, 2400, 2400, 2160],
+      rows: [
+        new TableRow({ children: [ hdrCell("RELCO Service Tier", 2400), hdrCell("Scope", 2400), hdrCell("Estimated Fee (PKR)", 2400), hdrCell("Timeline", 2160) ]}),
+        ...[
+          ["Tier 1 — Discovery Sprint",       "Full OIA audit + ROI report + prioritised roadmap",    "",   "2 weeks"],
+          ["Tier 2 — Implementation",         "Design, build and deploy top 3 automation initiatives","",   "6–8 weeks"],
+          ["Tier 3 — Retained Optimisation",  "Monthly KPI review, system iteration, new initiatives", "/mo","Ongoing"],
+        ].map(([t, s, f, tm], i) => new TableRow({ children: [
+          cell([para(run(t, {bold:true, size:20, color:NAVY}))], {fill:i%2===0?WHITE:GRAY, width:2400}),
+          cell([para(run(s, {size:20}))],                         {fill:i%2===0?WHITE:GRAY, width:2400}),
+          cell([para(run(f ? `PKR ${f}` : "PKR", {size:20}))],  {fill:i%2===0?WHITE:GRAY, width:2400}),
+          cell([para(run(tm,{size:20}))],                         {fill:i%2===0?WHITE:GRAY, width:2160}),
+        ]})),
+      ],
+    }),
+    blank(200),
+    subTitle("9.3  Consultant Recommendation & Next Steps"),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [9360],
+      rows: [
+        new TableRow({ children: [
+          cell([
+            para(run("Recommended engagement tier:", {bold:true, size:20}), {after:60}),
+            para(run("", {size:20}), {after:200}),
+            para(run("Rationale:", {bold:true, size:20}), {after:60}),
+            para(run("", {size:20}), {after:200}),
+            para(run("Proposed start date:", {bold:true, size:20}), {after:60}),
+            para(run("", {size:20}), {after:60}),
+          ], {fill:WHITE, width:9360, vAlign:VerticalAlign.TOP}),
+        ]}),
+      ],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+// ── SECTION 10: SIGN-OFF ──────────────────────────────────────────────────────
+function signOff() {
+  return [
+    sectionTitle("Section 10  —  Audit Sign-Off & Declaration"),
+    blank(100),
+    bodyText("This Organizational Intelligence Audit has been conducted in accordance with the professional standards of the Institute of Cost and Management Accountants of Pakistan (ICMAP) and the consulting methodology of RELCO Digital Solutions. The findings are based on information provided by client representatives during the audit process and have not been independently verified unless otherwise stated."),
+    blank(80),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 4680],
+      rows: [
+        new TableRow({ children: [ hdrCell("Consultant Sign-Off", 4680), hdrCell("Client Acknowledgement", 4680) ]}),
+        new TableRow({ children: [
+          cell([
+            para(run("Name: Misbah Ul Alam, CMA",{bold:true, size:20}), {after:120}),
+            para(run("Title: Principal AI Strategist",{size:20}),        {after:120}),
+            para(run("Organisation: RELCO Digital Solutions",{size:20}), {after:240}),
+            para(run("Signature:", {size:20}),                           {after:200}),
+            para(run("Date:", {size:20}),                                {after:60}),
+          ], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+          cell([
+            para(run("Name:", {size:20}),        {after:120}),
+            para(run("Title:", {size:20}),        {after:120}),
+            para(run("Organisation:", {size:20}), {after:240}),
+            para(run("Signature:", {size:20}),    {after:200}),
+            para(run("Date:", {size:20}),         {after:60}),
+          ], {fill:WHITE, width:4680, vAlign:VerticalAlign.TOP}),
+        ]}),
+      ],
+    }),
+    blank(200),
+    noteBox("Confidentiality Notice: This document and its contents are the proprietary intellectual property of RELCO Digital Solutions. The audit methodology, scoring framework, and ROI projection model contained herein are not to be reproduced, shared, or adapted without written permission from RELCO Digital Solutions. Client data collected during the audit is held in strict confidence and processed in accordance with applicable data protection standards."),
+    blank(160),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing:{ before:120, after:60 },
+      children: [run("RELCO Digital Solutions  |  Principal AI Strategist: Misbah Ul Alam, CMA", { bold:true, size:18, color:NAVY })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [run("bariumconsulting.vercel.app  |  linkedin.com/in/misbah-ul-alam-20551b48", { size:16, color:"888888" })],
+    }),
+  ];
+}
+
+// ── ASSEMBLE DOCUMENT ─────────────────────────────────────────────────────────
+const doc = new Document({
+  numbering: { config: [] },
+  styles: {
+    default: { document: { run: { font:"Arial", size:22 } } },
+    paragraphStyles: [
+      { id:"Heading1", name:"Heading 1", basedOn:"Normal", next:"Normal", quickFormat:true,
+        run:{ size:32, bold:true, font:"Arial", color:NAVY },
+        paragraph:{ spacing:{ before:240, after:120 }, outlineLevel:0 } },
+      { id:"Heading2", name:"Heading 2", basedOn:"Normal", next:"Normal", quickFormat:true,
+        run:{ size:26, bold:true, font:"Arial", color:NAVY },
+        paragraph:{ spacing:{ before:180, after:80  }, outlineLevel:1 } },
+    ],
+  },
+  sections: [{
+    properties: {
+      page: {
+        size: { width:12240, height:15840 },
+        margin: { top:1080, right:1080, bottom:1080, left:1080 },
+      },
+    },
+    headers: {
+      default: new Header({ children: [
+        new Table({
+          width: { size: 10080, type: WidthType.DXA },
+          columnWidths: [6480, 3600],
+          rows: [new TableRow({ children: [
+            cell([para(run("RELCO Digital Solutions  |  Organizational Intelligence Audit", {size:16, color:"888888"}))],
+              { fill:WHITE, width:6480, borders:{ top:{style:BorderStyle.NONE},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE},bottom:thinBorder } }),
+            cell([para(run("STRICTLY CONFIDENTIAL", {size:15, bold:true, color:GOLD}), {align:AlignmentType.RIGHT})],
+              { fill:WHITE, width:3600, borders:{ top:{style:BorderStyle.NONE},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE},bottom:thinBorder } }),
+          ]})],
+        }),
+      ]}),
+    },
+    footers: {
+      default: new Footer({ children: [
+        new Paragraph({
+          tabStops:[{ type:TabStopType.RIGHT, position:9360 }],
+          spacing:{ before:60 },
+          border:{ top:thinBorder },
+          children:[
+            run("Misbah Ul Alam, CMA  |  RELCO Digital Solutions", {size:16, color:"888888"}),
+            new TextRun({ text:"\tPage ", font:"Arial", size:16, color:"888888" }),
+            new TextRun({ children:[new PageNumber()], font:"Arial", size:16, color:"888888" }),
+          ],
+        }),
+      ]}),
+    },
+    children: [
+      ...coverPage(),
+      ...execSummary(),
+      ...processInventory(),
+      ...dataQuality(),
+      ...techStack(),
+      ...humanDependency(),
+      ...leadershipReadiness(),
+      ...masterScorecard(),
+      ...roiProjection(),
+      ...roadmap(),
+      ...signOff(),
+    ],
+  }],
+});
+
+Packer.toBuffer(doc).then(buf => {
+  fs.writeFileSync("/home/claude/OIA_RELCO_Template.docx", buf);
+  console.log("Done");
+});
